@@ -18,6 +18,14 @@ A macOS menu bar system monitor in the making — CPU, memory, processes, histor
 
 > **Current stage:** design and specification. There is no application code, installer, or release yet. Every interface image below is an AI-generated concept with sample data, not a screenshot of a working app.
 
+## Installation — planned
+
+**No download is available yet.** The intended installation is simple: download a DMG from GitHub Releases, drag MacGlint into Applications, and open it from there. Public builds are planned to be Developer ID signed and notarized by Apple.
+
+A Homebrew cask will provide a second option once it has been published and tested. In-app updates are a later step. See the [installation and release plan](docs/INSTALLATION.md) for prerequisites, first-launch behavior, and release checks.
+
+Working download links and installation commands will appear here with the first tested release.
+
 ## The idea
 
 Open a small panel to see how your Mac is doing. Expand a metric to find the apps behind it. Look back at a slowdown, or get an alert when a problem persists.
@@ -96,6 +104,7 @@ Build and installation instructions will be added when a working application exi
 
 - [Product specification](docs/superpowers/specs/2026-10-14-air-design.md) — behavior, proposed architecture, and limits.
 - [Roadmap](docs/ROADMAP.md) — implementation stages and acceptance criteria.
+- [Installation plan](docs/INSTALLATION.md) — DMG, Homebrew, first launch, and updates.
 - [Design archive](docs/design/README.md) — chosen direction and earlier alternatives.
 - [Safari research](docs/research/safari.md) — findings and unresolved questions.
 - [Contributing](CONTRIBUTING.md) — how to share useful feedback at this stage.
