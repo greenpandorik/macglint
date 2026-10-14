@@ -5,6 +5,8 @@ let package = Package(
     products: [.library(name: "MacGlintCore", targets: ["MacGlintCore"])],
     targets: [
         .target(name: "MacGlintCore"),
-        .testTarget(name: "MacGlintTests", dependencies: ["MacGlintCore"])
+        .target(name: "CMacGlint", publicHeadersPath: "include", linkerSettings: [.linkedFramework("IOKit"), .linkedFramework("CoreFoundation")]),
+        .target(name: "MacGlintSystem", dependencies: ["MacGlintCore", "CMacGlint"]),
+        .testTarget(name: "MacGlintTests", dependencies: ["MacGlintCore", "MacGlintSystem"])
     ]
 )
