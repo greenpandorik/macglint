@@ -8,6 +8,7 @@ public struct Preferences: Codable {
     public var notifications = false
     public var rules = AlertRule.defaults
     public var excludedApps: Set<String> = []
+    public var mutedRules: [String: Date]?
     public var pauseUntil: Date?
     public init() {}
     public static func load(from defaults: UserDefaults) -> Preferences {

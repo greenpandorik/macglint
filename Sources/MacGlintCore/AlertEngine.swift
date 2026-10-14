@@ -14,7 +14,7 @@ public final class AlertEngine {
         for id in states.keys { states[id]?.since = nil; states[id]?.active = false }
         lastTime = nil
     }
-    public func evaluate(snapshot: MetricSnapshot, processes: [ProcessSample], rules: [AlertRule], excludedApps: Set<String> = [], paused: Bool = false, uptime: Double) -> [AlertEvent] {
+    public func evaluate(snapshot: MetricSnapshot, processes: [ProcessSample], rules: [AlertRule], excludedApps: Set<String> = [], paused: Bool = false, mutedRuleIDs: Set<UUID> = [], uptime: Double) -> [AlertEvent] {
         let gap = lastTime.map { uptime - $0 > 30 || uptime < $0 } ?? false
         lastTime = uptime
         let ids = Set(rules.map(\.id))
@@ -25,7 +25,7 @@ public final class AlertEngine {
             if state.rule != rule { state = State(rule: rule) }
             if gap { state.since = nil; state.active = false }
             let excluded = rule.appKey.map { excludedApps.contains($0) } ?? false
-            guard rule.enabled, rule.isValid, !paused, !excluded,
+            guard rule.enabled, rule.isValid, !paused, !excluded, !mutedRuleIDs.contains(rule.id),
                   let value = measurement(rule, snapshot, processes), value.isFinite else {
                 state.since = nil; state.active = false; states[rule.id] = state; continue
             }
@@ -48,7 +48,7 @@ public final class AlertEngine {
                     let display = rule.metric == .pressure ? (value >= 2 ? "критическое" : "повышенное") : String(format: "%.1f", value)
                     events.append(AlertEvent(ruleID: rule.id, date: snapshot.date, title: rule.name,
                         detail: "\(rule.metric.title): \(display) · дольше \(Int(rule.duration)) с", metric: rule.metric,
-                        value: value, appKey: rule.appKey, process: process))
+                        value: value, appKey: rule.appKey, process: process, ruleSnapshot: rule))
                     state.lastFire = uptime; state.active = true
                 }
             } else { state.since = nil }

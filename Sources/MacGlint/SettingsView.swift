@@ -46,6 +46,9 @@ struct SettingsView: View {
                                 SmallLabel(text: "\(rule.metric.title) \(rule.metric == .diskFreeGB ? "<" : "≥") \(rule.threshold.formatted()) · \(Int(rule.duration)) с · " + (rule.appKey == nil ? "весь Mac" : "приложение"))
                             }
                             Spacer()
+                            if let until = store.ruleMutedUntil(rule.id) {
+                                Button("Пауза до " + until.formatted(date: .omitted, time: .shortened) + " · возобновить") { store.resumeRule(rule.id) }.font(.caption)
+                            }
                             Button("Изменить") { editing = rule }
                             Button { store.prefs.rules.removeAll { $0.id == rule.id }; store.savePreferences() } label: { Image(systemName: "trash") }.buttonStyle(.plain).help("Удалить правило").accessibilityLabel("Удалить правило «" + rule.name + "»")
                         }.padding(.vertical, 3)
@@ -77,11 +80,13 @@ struct SettingsView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }))
                     Button("Очистить историю…") { clearConfirm = true }
-                    SmallLabel(text: "MacGlint 0.2.0 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
+                    SmallLabel(text: "MacGlint 0.3.0 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
                     Link("Проект на GitHub", destination: URL(string: "https://github.com/greenpandorik/macglint")!)
                 }
             }.padding(.horizontal, 24).padding(.bottom, 20)
         }
+        .onAppear { openRequestedRule() }
+        .onChange(of: store.requestedRuleID) { _, _ in openRequestedRule() }
         .onChange(of: store.prefs.menuCPU) { _, _ in store.savePreferences() }
         .onChange(of: store.prefs.menuMemory) { _, _ in store.savePreferences() }
         .onChange(of: store.prefs.menuNetwork) { _, _ in store.savePreferences() }
@@ -91,6 +96,11 @@ struct SettingsView: View {
         } }
         .sheet(isPresented: $newRule) { RuleEditor(rule: AlertRule(name: "Моё правило", metric: .cpu, threshold: 80), apps: store.appChoices) { store.prefs.rules.append($0); store.savePreferences() } }
         .confirmationDialog("Удалить историю нагрузки и событий?", isPresented: $clearConfirm) { Button("Очистить", role: .destructive) { store.clearHistory() } }
+    }
+    private func openRequestedRule() {
+        guard let id = store.requestedRuleID else { return }
+        editing = store.prefs.rules.first { $0.id == id }
+        store.requestedRuleID = nil
     }
     private var exceptionChoices: [(key: String, name: String)] {
         var choices = Dictionary(uniqueKeysWithValues: store.appChoices.map { ($0.key, $0.name) })

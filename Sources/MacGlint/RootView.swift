@@ -134,6 +134,7 @@ struct RootView: View {
                     switch store.tab {
                     case .processes: ProcessView(store: store)
                     case .history: HistoryView(store: store)
+                    case .growth: MemoryGrowthView(store: store)
                     case .settings: SettingsView(store: store)
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -155,6 +156,6 @@ struct RootView: View {
         }
     }
     private func icon(_ tab: DetailTab) -> String {
-        switch tab { case .processes: return "list.bullet.rectangle"; case .history: return "chart.xyaxis.line"; case .settings: return "gearshape" }
+        switch tab { case .processes: return "list.bullet.rectangle"; case .growth: return "arrow.up.right"; case .history: return "chart.xyaxis.line"; case .settings: return "gearshape" }
     }
 }

@@ -52,9 +52,20 @@ final class GlintPanel: NSPanel {
         full = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 700), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         full.title = "MacGlint"; full.isReleasedWhenClosed = false
         full.contentMinSize = NSSize(width: 800, height: 560)
-        full.contentView = NSHostingView(rootView: RootView(store: store, compact: false))
+        let fullContent = NSHostingView(rootView: RootView(store: store, compact: false))
+        // SwiftUI lists must scroll within the user's window instead of changing its minimum size.
+        fullContent.sizingOptions = []
+        full.contentView = fullContent
         full.delegate = self
         full.center(); full.setFrameAutosaveName("MacGlintDetails")
+        if let visible = full.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+            var frame = full.frame
+            frame.size.width = min(frame.width, visible.width)
+            frame.size.height = min(frame.height, visible.height)
+            frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+            frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+            full.setFrame(frame, display: false)
+        }
 
         store.onOpenFull = { [weak self] in self?.showFull() }
         store.onOpenMini = { [weak self] in self?.showMini() }

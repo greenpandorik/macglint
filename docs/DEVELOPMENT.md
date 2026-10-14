@@ -45,8 +45,21 @@ Rules are sustained thresholds with recovery hysteresis and repeat cooldown. Per
 
 ## Window behavior (0.2.0)
 
-Left click on the menu bar icon always toggles the compact panel. Opening full details dismisses the compact panel and reveals a persistent resizable window with native close/minimize controls and Processes, History, Settings navigation. Right click provides both entry points plus Settings and Quit. The full window appears in the Dock while open; closing it returns to menu-bar-only operation. Reopening the application reveals the full window, providing an alternative if the menu bar is crowded.
+Left click on the menu bar icon always toggles the compact panel. Opening full details dismisses the compact panel and reveals a persistent resizable window with native close/minimize controls and Processes, Memory Growth, History, Settings navigation. Right click provides both entry points plus Settings and Quit. The full window appears in the Dock while open; closing it returns to menu-bar-only operation. Reopening the application reveals the full window, providing an alternative if the menu bar is crowded.
 
 Esc, outside clicks, or focus loss dismiss the compact panel only. The pin applies to the full window. While MacGlint is active, Cmd+0 opens the mini panel, Cmd+1 opens full details, Cmd+, opens Settings, and Cmd+F focuses process search. These are app shortcuts, not global hotkeys.
 
 Rule editing keeps raw numeric text until validation, so invalid text cannot silently save the previous value. Only CPU/memory can be selected for app-specific rules. Saved exclusions remain editable after the app exits. Process child sorting follows the selected column.
+
+
+## History insights (0.3.0)
+
+System points retain their ~10–12 second cadence. `Episode` summaries capture the union of the top three groups by CPU and top three by memory for the current user, every ~30–36 seconds (at most six groups, 2,880 summaries, 24 hours). New alerts also carry an exact episode and a copy of the triggering rule; editing a rule later does not rewrite its historical condition. Summaries contain names, grouping keys (which may be paths), group metrics, counts and a representative process identity. All remain local.
+
+Click/drag the history chart, use the previous/next controls, or choose Latest snapshot. An event anchors the visible time range until returning to live time. Summary timestamps are explicit because system points and app summaries have different cadences. A summary more than 18 seconds away is not substituted. Legacy archives/events lacking the optional fields still load; the UI states that their app context is unavailable. The list is a bounded top sample, not all running apps and not proof of the cause of a slowdown.
+
+Memory growth observes every collected reading. Per group, it compares the oldest point within 600 seconds with the newest, requiring at least 60 seconds; at most 301 points per live group. Missing memory, disappearance, disjoint process identities, backwards time, wake or a gap over 30 seconds resets that group's baseline. Composition changes during the interval are labelled. The view shows positive differences of at least 1 MB; before/after values use MB to avoid hiding smaller differences through GB rounding. Comparisons are in memory only and reset on app restart. Added/removed helper processes can change a group's total; growth is not a memory-leak diagnosis.
+
+Event actions open only an exact still-live process identity, never a recycled PID, and do not terminate anything automatically. Editing routes to the current rule; deleted rules are disabled explicitly. Pausing one rule for an hour suppresses its event creation and notifications while allowing other rules to run. Resume is available in both the card and Settings. The mute expiration persists locally; resuming starts a fresh duration measurement after the rule has been evaluated while muted.
+
+The full hosting view does not derive a growing window minimum from lazy list content. Native window minimums and the restored frame are bounded by the visible screen; content scrolls within the window.

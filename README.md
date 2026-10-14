@@ -16,7 +16,7 @@ A native macOS menu bar system monitor — CPU, memory, processes, history, and 
 
 > **Personal project, built with AI assistance.** I'm building MacGlint primarily for myself: I want a system monitor that feels clear, modern, and comfortable to use every day. AI helps me explore the design, write documentation, and develop the project. I'm sharing the work publicly in case someone else finds it useful.
 
-> **Current stage: working native preview (0.2.0).** The app builds and runs locally. Public Apple-notarized downloads are not available yet. Interface images below are the original AI-generated design concepts with sample data; they are not screenshots of the current app.
+> **Current stage: working native preview (0.3.0).** The app builds and runs locally. Public Apple-notarized downloads are not available yet. Interface images below are the original AI-generated design concepts with sample data; they are not screenshots of the current app.
 
 ## Build and install the preview
 
@@ -35,7 +35,7 @@ Signed GitHub Releases and Homebrew installation are next steps. See [installati
 
 ## The idea
 
-Click the menu bar icon for a compact panel. Choose **Open full window** for a separate, resizable window with Processes, History, and Settings. Closing that window keeps monitoring active. Click a compact metric to open the relevant process sort. Look back at a slowdown, or get an alert when a problem persists.
+Click the menu bar icon for a compact panel. Choose **Open full window** for a separate, resizable window with Processes, Memory Growth, History, and Settings. Closing that window keeps monitoring active. Click a compact metric to open the relevant process sort. Look back at a slowdown, or get an alert when a problem persists.
 
 MacGlint is being designed around a simple path: **overview → application → process → action**.
 
@@ -55,12 +55,16 @@ MacGlint is being designed around a simple path: **overview → application → 
 | **Expandable process view** | Search and sort applications, expand their processes, and inspect a selected process. |
 | **Process controls** | Request normal termination or explicitly confirm a force quit for an accessible process. |
 | **Light, dark, and system themes** | Keep the same readable layout in either appearance. |
-| **Load history** | Revisit a slowdown with alert markers on the timeline. |
+| **Detailed history** | Select a moment on the graph to see system metrics and the recorded top CPU/memory groups. |
+| **Memory growth** | Compare current process-group memory with up to ten minutes of continuous observations. |
+| **Alert cards** | Inspect the event snapshot and original threshold; edit or pause its rule, or open a still-running process. |
 | **Personal alert rules** | Set thresholds and durations for overall load, individual apps, memory pressure, and free disk space. |
 | **Quiet notifications** | Ignore brief spikes, suppress repeats, add exceptions, or pause alerts. |
 | **Pinned details** | Keep the expanded view open while investigating a problem. |
 
 Alerts never automatically terminate processes. History is bounded to 24 hours; selected-process CPU traces cover up to two minutes while the app is running. Rules support CPU and memory for an app, plus CPU, memory, memory pressure, and free disk space for the whole Mac. Per-app exclusions suppress that app’s rules; they do not silence whole-Mac rules.
+
+Historical app summaries start with version 0.3.0 and are captured roughly every 30 seconds, plus exactly when an alert fires. Old data remains readable without invented app details. Memory-growth comparisons need at least a minute, reset across missing data/restarts, and do not diagnose memory leaks. [Details and limits](docs/DEVELOPMENT.md#history-insights-030).
 
 ## Design previews
 

@@ -9,12 +9,16 @@ struct CPUPoint: Identifiable {
     let value: Double
     var id: Date { date }
 }
-enum DetailTab: String, CaseIterable { case processes = "Процессы", history = "История", settings = "Настройки" }
+enum DetailTab: String, CaseIterable { case processes = "Процессы", growth = "Рост памяти", history = "История", settings = "Настройки" }
 @MainActor final class AppStore: ObservableObject {
     @Published var snapshot = MetricSnapshot()
     @Published var processes: [ProcessSample] = []
     @Published var recent: [MetricSnapshot] = []
     @Published var events: [AlertEvent] = []
+    @Published var episodes: [Episode] = []
+    @Published var memoryGrowth: [MemoryGrowth] = []
+    @Published var requestedRuleID: UUID?
+    @Published var growthHasComparison = false
     @Published var prefs = Preferences.load(from: .standard)
     @Published var pinned = false
     @Published var tab: DetailTab = .processes
@@ -37,19 +41,21 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     var panelVisible = false
     private let sampler = SamplingService()
     private let engine = AlertEngine()
+    private let growthTracker = MemoryGrowthTracker()
     private let history: HistoryStore
     private var timer: Timer?
     private var sampling = false
     private var generation = 0
     private var lastSample = Date.distantPast
     private var lastHistory = Date.distantPast
+    private var lastEpisode = Date.distantPast
     private var lastSave = Date.distantPast
     private var traces: [ProcessIdentity: [CPUPoint]] = [:]
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("MacGlint")
         history = HistoryStore(url: support.appendingPathComponent("history.json"))
-        recent = history.snapshots; events = history.events
+        recent = history.snapshots; events = history.events; episodes = history.episodes
         notice = history.loadWarning
     }
     func start() {
@@ -72,7 +78,7 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     }
     func handleWake() {
         generation += 1; sampling = true
-        engine.resetPending(); traces = [:]
+        engine.resetPending(); traces = [:]; growthTracker.reset(); memoryGrowth = []; growthHasComparison = false
         Task {
             await sampler.reset()
             sampling = false
@@ -87,6 +93,8 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
         sampling = false; lastSample = Date()
         snapshot = reading.snapshot; processes = reading.processes
         let now = snapshot.date
+        growthTracker.record(processes: processes, at: now, uid: geteuid())
+        memoryGrowth = growthTracker.growth; growthHasComparison = growthTracker.hasComparison
         let alive = Set(processes.map(\.identity))
         traces = traces.filter { alive.contains($0.key) }
         for process in processes {
@@ -98,11 +106,18 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
         }
         if let selected, let live = processes.first(where: { $0.identity == selected.identity }) { self.selected = live }
         let paused = prefs.pauseUntil.map { $0 > now } ?? false
-        let fired = engine.evaluate(snapshot: snapshot, processes: processes, rules: prefs.rules,
-            excludedApps: prefs.excludedApps, paused: paused, uptime: ProcessInfo.processInfo.systemUptime)
+        let muted = Set((prefs.mutedRules ?? [:]).filter { $0.value > now }.keys.compactMap(UUID.init(uuidString:)))
+        var fired = engine.evaluate(snapshot: snapshot, processes: processes, rules: prefs.rules,
+            excludedApps: prefs.excludedApps, paused: paused, mutedRuleIDs: muted, uptime: ProcessInfo.processInfo.systemUptime)
+        let captureDue = now.timeIntervalSince(lastEpisode) >= 30
+        if captureDue || !fired.isEmpty {
+            let context = Episode.capture(snapshot: snapshot, processes: processes, uid: geteuid())
+            for i in fired.indices { fired[i].context = context }
+            if captureDue { history.appendEpisode(context); lastEpisode = now }
+        }
         history.addEvents(fired)
         if now.timeIntervalSince(lastHistory) >= 10 {
-            history.append(snapshot); recent = history.snapshots; lastHistory = now
+            history.append(snapshot); recent = history.snapshots; episodes = history.episodes; lastHistory = now
         }
         if !fired.isEmpty { events = history.events; fired.forEach(deliver) }
         if now.timeIntervalSince(lastSave) >= 60 || !fired.isEmpty {
@@ -176,12 +191,41 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
         } catch { self.error = error.localizedDescription }
     }
     func clearHistory() {
-        do { try history.clear(); recent = []; events = []; focusedEvent = nil } catch { self.error = error.localizedDescription }
+        do { try history.clear(); recent = []; events = []; episodes = []; focusedEvent = nil; growthTracker.reset(); memoryGrowth = []; growthHasComparison = false; lastHistory = .distantPast; lastEpisode = .distantPast } catch { self.error = error.localizedDescription }
     }
     func pauseAlerts() { prefs.pauseUntil = Date().addingTimeInterval(3600); savePreferences() }
     func resumeAlerts() { prefs.pauseUntil = nil; savePreferences() }
     func showEvent(_ event: AlertEvent) {
+        guard canNavigate?() != false else { onOpenFull?(); return }
         focusedEvent = event; expand(.history)
+    }
+    func openHistoricalProcess(_ identity: ProcessIdentity?) {
+        guard canNavigate?() != false else { onOpenFull?(); return }
+        guard let identity, let process = processes.first(where: { $0.identity == identity }) else {
+            notice = "Этот процесс уже завершён или перезапущен."; return
+        }
+        search = String(identity.pid); onlyMine = true; choose(process)
+        expandedGroups.insert(process.appKey); expand()
+    }
+    func isLive(_ identity: ProcessIdentity?) -> Bool {
+        guard let identity else { return false }
+        return processes.contains { $0.identity == identity }
+    }
+    func editRule(for event: AlertEvent) {
+        guard canNavigate?() != false else { onOpenFull?(); return }
+        guard prefs.rules.contains(where: { $0.id == event.ruleID }) else { notice = "Правило этого события уже удалено."; return }
+        requestedRuleID = event.ruleID; expand(.settings)
+    }
+    func muteRule(_ id: UUID) {
+        guard prefs.rules.contains(where: { $0.id == id }) else { return }
+        var muted = (prefs.mutedRules ?? [:]).filter { $0.value > Date() }
+        muted[id.uuidString] = Date().addingTimeInterval(3600)
+        prefs.mutedRules = muted; savePreferences()
+    }
+    func resumeRule(_ id: UUID) { prefs.mutedRules?[id.uuidString] = nil; savePreferences() }
+    func ruleMutedUntil(_ id: UUID) -> Date? {
+        guard let until = prefs.mutedRules?[id.uuidString], until > snapshot.date else { return nil }
+        return until
     }
     func requestNotifications() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in

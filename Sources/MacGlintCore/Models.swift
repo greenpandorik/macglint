@@ -94,6 +94,8 @@ public struct AlertEvent: Codable, Identifiable, Sendable {
     public var value: Double
     public var appKey: String?
     public var process: ProcessSample?
+    public var context: Episode? = nil
+    public var ruleSnapshot: AlertRule? = nil
 }
 
 public struct NetworkCounter: Sendable {
