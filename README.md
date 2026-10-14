@@ -4,9 +4,9 @@
 
 **A clearer view of your Mac.**
 
-A macOS menu bar system monitor in the making — CPU, memory, processes, history, and personal alerts.
+A native macOS menu bar system monitor — CPU, memory, processes, history, and personal alerts.
 
-![Stage: concept](https://img.shields.io/badge/stage-concept_%26_design-64748b?style=flat-square)
+![Stage: local preview](https://img.shields.io/badge/stage-local_preview-64748b?style=flat-square)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-2563eb?style=flat-square)
 ![AI-assisted project](https://img.shields.io/badge/made_with-AI_assistance-0f766e?style=flat-square)
 
@@ -16,15 +16,22 @@ A macOS menu bar system monitor in the making — CPU, memory, processes, histor
 
 > **Personal project, built with AI assistance.** I'm building MacGlint primarily for myself: I want a system monitor that feels clear, modern, and comfortable to use every day. AI helps me explore the design, write documentation, and develop the project. I'm sharing the work publicly in case someone else finds it useful.
 
-> **Current stage:** design and specification. There is no application code, installer, or release yet. Every interface image below is an AI-generated concept with sample data, not a screenshot of a working app.
+> **Current stage: working native preview (0.1.0).** The app builds and runs locally. Public Apple-notarized downloads are not available yet. Interface images below are the original AI-generated design concepts with sample data; they are not screenshots of the current app.
 
-## Installation — planned
+## Build and install the preview
 
-**No download is available yet.** The intended installation is simple: download a DMG from GitHub Releases, drag MacGlint into Applications, and open it from there. Public builds are planned to be Developer ID signed and notarized by Apple.
+Requires **macOS 14+**, Xcode command-line tools with Swift 5.9+, and Git. Tested locally on Apple Silicon with macOS 26 / Xcode 26.4. The current interface is Russian.
 
-A Homebrew cask will provide a second option once it has been published and tested. In-app updates are a later step. See the [installation and release plan](docs/INSTALLATION.md) for prerequisites, first-launch behavior, and release checks.
+```sh
+git clone https://github.com/greenpandorik/macglint.git
+cd macglint
+./scripts/build-app.sh
+open build/MacGlint.app
+```
 
-Working download links and installation commands will appear here with the first tested release.
+To make a drag-to-Applications installer, run `./scripts/make-dmg.sh`. It creates a DMG in `build/` for your Mac's architecture. Both scripts produce a **local ad-hoc signed build**, not an Apple-notarized release. Do not disable Gatekeeper to install a downloaded build.
+
+Signed GitHub Releases and Homebrew installation are next steps. See [installation details](docs/INSTALLATION.md).
 
 ## The idea
 
@@ -38,11 +45,11 @@ MacGlint is being designed around a simple path: **overview → application → 
   <img alt="MacGlint concept: an expanded macOS system monitor with grouped processes, a detail chart, and termination controls. Sample data." src="docs/design/air-expanded-light.png" width="1100">
 </picture>
 
-*Early design concepts use the working name **Air**. The project is now called **MacGlint**. The mockups currently show a Russian interface; supported application languages have not been decided.*
+*Early design concepts use the working name **Air**. The project is now called **MacGlint**. The mockups currently show a Russian interface; the native preview currently uses Russian.*
 
-## Planned features
+## Available in the native preview
 
-| Feature | What it should help you do |
+| Feature | What you can do |
 |---|---|
 | **Menu bar overview** | Check CPU, memory, network speed, and battery; choose which metrics stay visible. |
 | **Expandable process view** | Search and sort applications, expand their processes, and inspect a selected process. |
@@ -53,7 +60,7 @@ MacGlint is being designed around a simple path: **overview → application → 
 | **Quiet notifications** | Ignore brief spikes, suppress repeats, add exceptions, or pause alerts. |
 | **Pinned details** | Keep the expanded view open while investigating a problem. |
 
-These are planned capabilities, not implemented features. Alerts will never automatically terminate processes.
+Alerts never automatically terminate processes. History is bounded to 24 hours; selected-process CPU traces cover up to two minutes while the app is running. Rules support CPU and memory for an app, plus CPU, memory, memory pressure, and free disk space for the whole Mac. Per-app exclusions suppress that app’s rules; they do not silence whole-Mac rules.
 
 ## Design previews
 
@@ -80,25 +87,26 @@ These are planned capabilities, not implemented features. Alerts will never auto
 
 ## A note about Safari
 
-Safari is my main browser, so understanding its resource use matters to this project. Process-level monitoring is part of the plan. **Accurate CPU and memory attribution to individual tabs is still a research question.**
+Safari is my main browser, so understanding its resource use matters to this project. Accessible Safari and generic WebKit processes are monitored. **Accurate CPU and memory attribution to individual tabs is still a research question.**
 
 MacGlint will not label a process as a particular website without a verified mapping. The [Safari research note](docs/research/safari.md) records the available evidence and the checks a prototype needs to pass.
 
 ## Development
 
-The proposed stack is **Swift, SwiftUI, and AppKit**. The first target is a personal Apple Silicon Mac; the minimum macOS version and wider hardware support are not fixed yet.
+Built with **Swift, SwiftUI, AppKit, and small native C collectors**. No third-party runtime packages. CPU is normalized to the whole Mac (0–100%); process memory is physical footprint. Network speed uses 64-bit counters for physical `en*` interfaces, avoiding double counting VPN tunnels. Generic WebKit processes are kept separate.
 
-The intended data model is local: settings and bounded monitoring history stay on the Mac. AI-assisted development does not mean that process information or browsing data needs to be sent to an AI service.
+The data model is local: settings and bounded monitoring history stay on the Mac. AI-assisted development does not mean that process information or browsing data needs to be sent to an AI service.
 
 | Step | Status |
 |---|---|
 | Visual direction and light/dark concepts | Available |
 | Product specification and roadmap | Available |
 | Safari tab-attribution feasibility | To investigate |
-| Working native application | Not started |
-| Installable release | Not available |
+| Working native application | Local preview available |
+| App / DMG build scripts | Available (ad-hoc signed) |
+| Apple-notarized public release | Pending Developer ID signing |
 
-Build and installation instructions will be added when a working application exists. Detailed planning documents are currently in Russian.
+Run `swift test` for metric, alert, history, preference, and guarded process-control checks. Tests only terminate a child process they create. GitHub Actions builds the app and DMG as test artifacts. See [development and limitations](docs/DEVELOPMENT.md). Detailed planning documents are in Russian.
 
 ## Explore the project
 

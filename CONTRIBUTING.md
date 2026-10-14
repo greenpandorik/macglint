@@ -1,6 +1,6 @@
 # Contributing to MacGlint
 
-MacGlint is a personal, AI-assisted project at the design stage. There is no application code or release yet. Feedback in **English or Russian** is welcome.
+MacGlint is a personal, AI-assisted project with a buildable native preview. An Apple-notarized public release is still pending. Feedback in **English or Russian** is welcome.
 
 ## Useful feedback right now
 
@@ -14,7 +14,7 @@ Use [Issues](https://github.com/greenpandorik/macglint/issues/new/choose) and de
 
 Small corrections can be sent as pull requests. Keep the English and Russian READMEs consistent when changing product scope or status. Verify relative links and clearly label concepts, assumptions, and verified behavior.
 
-Discuss larger feature or architecture changes before implementing them; the repository does not yet have a buildable app or an established contribution workflow for code.
+For code changes, run `swift test` and `./scripts/build-app.sh` on macOS. Explain validation and meaningful limitations in your pull request. Discuss larger feature or architecture changes before implementing them. Follow [AGENTS.md](AGENTS.md), especially process identity checks and privacy.
 
 ## Data and AI assistance
 

@@ -10,6 +10,10 @@ public final class AlertEngine {
     private var states: [UUID: State] = [:]
     private var lastTime: Double?
     public init() {}
+    public func resetPending() {
+        for id in states.keys { states[id]?.since = nil; states[id]?.active = false }
+        lastTime = nil
+    }
     public func evaluate(snapshot: MetricSnapshot, processes: [ProcessSample], rules: [AlertRule], excludedApps: Set<String> = [], paused: Bool = false, uptime: Double) -> [AlertEvent] {
         let gap = lastTime.map { uptime - $0 > 30 || uptime < $0 } ?? false
         lastTime = uptime

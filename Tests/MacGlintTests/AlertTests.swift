@@ -46,6 +46,17 @@ final class AlertTests: XCTestCase {
         XCTAssertTrue(evaluate(e, 90, 30).isEmpty)
         XCTAssertEqual(evaluate(e, 90, 40).count, 1)
     }
+    func testRuleRejectsUnsafeDurationsAndFractionalPressure() {
+        XCTAssertFalse(AlertRule(name: "Huge", metric: .cpu, threshold: 80, duration: 1e30).isValid)
+        XCTAssertFalse(AlertRule(name: "Pressure", metric: .pressure, threshold: 1.5).isValid)
+    }
+    func testWakeResetsPendingDurationEvenWhenUptimeBarelyAdvances() {
+        let e = AlertEngine()
+        _ = evaluate(e, 90, 0); _ = evaluate(e, 90, 9)
+        e.resetPending()
+        XCTAssertTrue(evaluate(e, 90, 10).isEmpty)
+        XCTAssertEqual(evaluate(e, 90, 20).count, 1)
+    }
     func testInvalidRuleCannotTrigger() {
         let r = AlertRule(name: "invalid", metric: .cpu, threshold: .nan, duration: -1)
         XCTAssertFalse(r.isValid)

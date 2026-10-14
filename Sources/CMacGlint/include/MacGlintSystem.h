@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <stddef.h>
 typedef struct {
-    uint64_t ticks_busy, ticks_total, memory_used, memory_total, net_in, net_out, disk_free;
-    int cpu_valid, memory_valid, network_valid, disk_valid, pressure, charging;
+    uint64_t ticks_busy, ticks_total, memory_used, memory_total, disk_free;
+    int cpu_valid, memory_valid, disk_valid, pressure, charging;
     double battery;
 } MGSystem;
 typedef struct {
@@ -15,6 +15,8 @@ typedef struct {
     char name[256];
     char path[4096];
 } MGProcess;
+typedef struct { uint32_t index; char name[32]; uint64_t received, sent; } MGNetwork;
+int mg_network(MGNetwork *out, int capacity);
 int mg_system(MGSystem *out);
 int mg_process(int32_t pid, MGProcess *out);
 int mg_processes(MGProcess *out, int capacity);

@@ -4,7 +4,7 @@ title: "[Idea] "
 body:
   - type: markdown
     attributes:
-      value: "MacGlint is at the design stage. English and Russian are welcome. / MacGlint пока на этапе дизайна. Можно писать по-русски."
+      value: "MacGlint is a native preview. English and Russian are welcome. / MacGlint — предварительная нативная версия. Можно писать по-русски."
   - type: textarea
     id: problem
     attributes:

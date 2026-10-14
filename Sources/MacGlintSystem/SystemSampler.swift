@@ -12,7 +12,9 @@ public final class SystemSampler {
     private var previousSystem: MGSystem?
     private var previousProcesses: [ProcessIdentity: UInt64] = [:]
     private var previousTime: Double?
+    private var previousNetwork: [String: NetworkCounter] = [:]
     public init() {}
+    public func reset() { previousSystem = nil; previousProcesses = [:]; previousTime = nil; previousNetwork = [:] }
     public func sample() -> SystemReading {
         let uptime = ProcessInfo.processInfo.systemUptime
         let elapsed = previousTime.map { uptime - $0 } ?? 0
@@ -25,11 +27,21 @@ public final class SystemSampler {
             if old.cpu_valid != 0 && raw.cpu_valid != 0 && raw.ticks_total > old.ticks_total && raw.ticks_busy >= old.ticks_busy {
                 snapshot.cpu = min(100, Double(raw.ticks_busy - old.ticks_busy) / Double(raw.ticks_total - old.ticks_total) * 100)
             }
-            if raw.network_valid != 0 && old.network_valid != 0 {
-                snapshot.download = MetricMath.rate(previous: old.net_in, current: raw.net_in, elapsed: elapsed)
-                snapshot.upload = MetricMath.rate(previous: old.net_out, current: raw.net_out, elapsed: elapsed)
-            }
         }
+        let networkBuffer = UnsafeMutablePointer<MGNetwork>.allocate(capacity: 128)
+        defer { networkBuffer.deallocate() }
+        let networkCount = Int(mg_network(networkBuffer, 128))
+        var network: [String: NetworkCounter] = [:]
+        if networkCount >= 0 {
+            for i in 0..<networkCount {
+                var item = networkBuffer[i]
+                let name = withUnsafePointer(to: &item.name) { $0.withMemoryRebound(to: CChar.self, capacity: 32) { String(cString: $0) } }
+                network["\(item.index):\(name)"] = NetworkCounter(received: item.received, sent: item.sent)
+            }
+            let rates = NetworkRates.measure(previous: previousNetwork, current: network, elapsed: elapsed)
+            snapshot.download = rates.download; snapshot.upload = rates.upload
+        }
+        previousNetwork = network
         let capacity = 8192
         let buffer = UnsafeMutablePointer<MGProcess>.allocate(capacity: capacity)
         defer { buffer.deallocate() }
@@ -82,4 +94,12 @@ public enum ProcessController {
         let result = mg_terminate(identity.pid, identity.startMicroseconds, identity.uid, force ? 1 : 0)
         if result != 0 { throw ProcessControlError.refused(result) }
     }
+}
+
+/// Serializes sampling off the UI actor while keeping counter baselines private.
+public actor SamplingService {
+    private let sampler = SystemSampler()
+    public init() {}
+    public func reset() { sampler.reset() }
+    public func sample() -> SystemReading { sampler.sample() }
 }

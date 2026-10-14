@@ -1,12 +1,13 @@
 #include "MacGlintSystem.h"
 #include <mach/mach.h>
+#include <mach/mach_time.h>
 #include <mach/host_info.h>
 #include <sys/sysctl.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 #include <sys/proc_info.h>
 #include <libproc.h>
-#include <ifaddrs.h>
+#include <net/route.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <IOKit/ps/IOPowerSources.h>
@@ -41,15 +42,6 @@ int mg_system(MGSystem *out) {
     int pressure = 0; len = sizeof(pressure);
     if (sysctlbyname("kern.memorystatus_vm_pressure_level", &pressure, &len, NULL, 0) == 0) {
         out->pressure = pressure == 4 ? 2 : pressure == 2 ? 1 : pressure == 1 ? 0 : -1;
-    }
-    struct ifaddrs *interfaces = NULL;
-    if (getifaddrs(&interfaces) == 0) {
-        for (struct ifaddrs *i = interfaces; i; i = i->ifa_next) {
-            if (!i->ifa_addr || i->ifa_addr->sa_family != AF_LINK || !i->ifa_data || strncmp(i->ifa_name, "en", 2) != 0) continue;
-            struct if_data *data = (struct if_data *)i->ifa_data;
-            out->net_in += data->ifi_ibytes; out->net_out += data->ifi_obytes; out->network_valid = 1;
-        }
-        freeifaddrs(interfaces);
     }
     struct statfs disk;
     if (statfs("/System/Volumes/Data", &disk) == 0) {
@@ -88,7 +80,11 @@ int mg_process(int32_t pid, MGProcess *out) {
     proc_pidpath(pid, out->path, sizeof(out->path));
     struct rusage_info_v2 usage;
     if (proc_pid_rusage(pid, RUSAGE_INFO_V2, (rusage_info_t *)&usage) == 0) {
-        out->cpu_ns = usage.ri_user_time + usage.ri_system_time;
+        // proc_pid_rusage reports Mach absolute time units, not nanoseconds on Apple Silicon.
+        mach_timebase_info_data_t timebase;
+        mach_timebase_info(&timebase);
+        __uint128_t ticks = (__uint128_t)usage.ri_user_time + usage.ri_system_time;
+        out->cpu_ns = (uint64_t)(ticks * timebase.numer / timebase.denom);
         out->memory = usage.ri_phys_footprint; out->usage_valid = 1;
     }
     return 1;
@@ -113,4 +109,33 @@ int mg_terminate(int32_t pid, uint64_t start_us, uint32_t uid, int force) {
     if (now.start_us != start_us || now.uid != uid) return ESTALE;
     if (kill(pid, force ? SIGKILL : SIGTERM) != 0) return errno;
     return 0;
+}
+
+int mg_network(MGNetwork *out, int capacity) {
+    int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0 };
+    size_t length = 0;
+    if (sysctl(mib, 6, NULL, &length, NULL, 0) != 0) return -1;
+    char *data = malloc(length);
+    if (!data) return -1;
+    if (sysctl(mib, 6, data, &length, NULL, 0) != 0) { free(data); return -1; }
+    int count = 0;
+    // All routing records share only this prefix; address records can be shorter than if_msghdr.
+    struct message_prefix { uint16_t length; uint8_t version; uint8_t type; };
+    for (char *cursor = data; (size_t)(data + length - cursor) >= sizeof(struct message_prefix);) {
+        struct message_prefix header;
+        memcpy(&header, cursor, sizeof(header));
+        if (header.length < sizeof(header) || header.length > (size_t)(data + length - cursor)) { free(data); return -1; }
+        if (header.type == RTM_IFINFO2 && header.length >= sizeof(struct if_msghdr2)) {
+            struct if_msghdr2 *info = (struct if_msghdr2 *)cursor;
+            char name[IF_NAMESIZE] = {0};
+            if (if_indextoname(info->ifm_index, name) && strncmp(name, "en", 2) == 0) {
+                if (count == capacity) { free(data); return -1; }
+                MGNetwork *item = &out[count++];
+                item->index = info->ifm_index; strlcpy(item->name, name, sizeof(item->name));
+                item->received = info->ifm_data.ifi_ibytes; item->sent = info->ifm_data.ifi_obytes;
+            }
+        }
+        cursor += header.length;
+    }
+    free(data); return count;
 }

@@ -72,9 +72,9 @@ public struct AlertRule: Codable, Identifiable, Equatable, Sendable {
         self.threshold = threshold; self.duration = duration; self.cooldown = cooldown; self.enabled = enabled
     }
     public var isValid: Bool {
-        guard threshold.isFinite, threshold > 0, duration.isFinite, duration >= 0, cooldown.isFinite, cooldown >= 0 else { return false }
+        guard threshold.isFinite, threshold > 0, duration.isFinite, duration >= 0, duration <= 86400, cooldown.isFinite, cooldown >= 0, cooldown <= 604800 else { return false }
         if metric == .cpu && threshold > 100 { return false }
-        if metric == .pressure && !(1...2).contains(threshold) { return false }
+        if metric == .pressure && threshold != 1 && threshold != 2 { return false }
         if appKey != nil && (metric == .pressure || metric == .diskFreeGB) { return false }
         return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -94,4 +94,21 @@ public struct AlertEvent: Codable, Identifiable, Sendable {
     public var value: Double
     public var appKey: String?
     public var process: ProcessSample?
+}
+
+public struct NetworkCounter: Sendable {
+    public var received: UInt64
+    public var sent: UInt64
+    public init(received: UInt64, sent: UInt64) { self.received = received; self.sent = sent }
+}
+public enum NetworkRates {
+    public static func measure(previous: [String: NetworkCounter], current: [String: NetworkCounter], elapsed: Double) -> (download: Double?, upload: Double?) {
+        var downloads: [Double] = [], uploads: [Double] = []
+        for (key, now) in current {
+            guard let old = previous[key] else { continue }
+            if let value = MetricMath.rate(previous: old.received, current: now.received, elapsed: elapsed) { downloads.append(value) }
+            if let value = MetricMath.rate(previous: old.sent, current: now.sent, elapsed: elapsed) { uploads.append(value) }
+        }
+        return (downloads.isEmpty ? nil : downloads.reduce(0, +), uploads.isEmpty ? nil : uploads.reduce(0, +))
+    }
 }
