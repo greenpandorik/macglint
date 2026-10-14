@@ -5,7 +5,7 @@ MacGlint is a personal, AI-assisted project with a buildable native preview. An 
 ## Useful feedback right now
 
 - A real monitoring problem you want to solve on your Mac.
-- A confusing label, interaction, or layout in a specific mockup.
+- A confusing label, interaction, or layout in the running app (include the app and macOS versions).
 - Evidence about reliable Safari tab-to-process attribution, with a reproducible example and macOS/Safari versions.
 
 Use [Issues](https://github.com/greenpandorik/macglint/issues/new/choose) and describe the problem before proposing a feature. Check existing issues to avoid duplicates. Keep each suggestion focused on one topic.
@@ -24,4 +24,4 @@ AI-assisted contributions are welcome. Describe what changed and how it was chec
 
 ---
 
-По-русски: сейчас особенно полезны конкретные сценарии использования, замечания к макетам и проверяемые сведения о Safari. Пишите в Issues на удобном языке. Для больших изменений сначала обсудим задачу; небольшие исправления документации можно присылать сразу.
+По-русски: сейчас особенно полезны конкретные сценарии использования, замечания к интерфейсу приложения и проверяемые сведения о Safari. Пишите в Issues на удобном языке. Для больших изменений сначала обсудим задачу; небольшие исправления документации можно присылать сразу.
