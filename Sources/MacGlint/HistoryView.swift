@@ -46,7 +46,7 @@ struct HistoryView: View {
             HStack {
                 Picker("Показатель", selection: $metric) { ForEach(metrics, id: \.self) { Text($0).tag($0) } }.frame(width: 180)
                 Spacer()
-                Picker("Период", selection: $window) { Text("15 мин").tag(900.0); Text("1 час").tag(3600.0); Text("24 часа").tag(86400.0) }.pickerStyle(.segmented).frame(width: 240)
+                Picker("Период", selection: $window) { Text("15 мин").tag(900.0); Text("1 час").tag(3600.0); Text("24 часа").tag(86400.0) }.pickerStyle(.segmented).labelsHidden().frame(width: 240)
             }
             HStack { Text(metric).font(.headline); SmallLabel(text: unit); Spacer(); if store.focusedEvent != nil { Button("К текущему времени") { store.focusedEvent = nil } } }
             if samples.isEmpty {

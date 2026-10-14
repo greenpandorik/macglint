@@ -28,9 +28,13 @@ public struct ProcessGroup: Identifiable {
     public var memoryBytes: UInt64?
 }
 public enum ProcessGrouping {
-    public static func groups(_ samples: [ProcessSample]) -> [ProcessGroup] {
+    public static func groups(_ samples: [ProcessSample], sortByMemory: Bool = false) -> [ProcessGroup] {
         Dictionary(grouping: samples, by: \.appKey).map { key, items in
-            let sorted = items.sorted { ($0.cpu ?? -1) > ($1.cpu ?? -1) }
+            let sorted = items.sorted {
+                let a = sortByMemory ? $0.memoryBytes.map(Double.init) ?? -1 : $0.cpu ?? -1
+                let b = sortByMemory ? $1.memoryBytes.map(Double.init) ?? -1 : $1.cpu ?? -1
+                return a == b ? $0.identity.pid < $1.identity.pid : a > b
+            }
             let cpu = items.allSatisfy { $0.cpu != nil } ? items.reduce(0.0) { $0 + ($1.cpu ?? 0) } : nil
             let memory: UInt64? = items.allSatisfy { $0.memoryBytes != nil } ? items.reduce(UInt64(0)) { $0 + ($1.memoryBytes ?? 0) } : nil
             return ProcessGroup(id: key, name: items.first?.appName ?? key, processes: sorted, cpu: cpu, memoryBytes: memory)

@@ -16,7 +16,6 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     @Published var recent: [MetricSnapshot] = []
     @Published var events: [AlertEvent] = []
     @Published var prefs = Preferences.load(from: .standard)
-    @Published var expanded = false
     @Published var pinned = false
     @Published var tab: DetailTab = .processes
     @Published var search = ""
@@ -27,10 +26,14 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     @Published var error: String?
     @Published var notice: String?
     @Published var notificationStatus = "Не запрошены"
+    @Published var notificationsDenied = false
     @Published var focusedEvent: AlertEvent?
-    var onLayout: (() -> Void)?
+    var onPinChange: (() -> Void)?
+    var onOpenFull: (() -> Void)?
+    var onOpenMini: (() -> Void)?
+    var onCloseMini: (() -> Void)?
+    var canNavigate: (() -> Bool)?
     var onMenuUpdate: (() -> Void)?
-    var onReveal: (() -> Void)?
     var panelVisible = false
     private let sampler = SamplingService()
     private let engine = AlertEngine()
@@ -110,7 +113,7 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     }
     var groups: [ProcessGroup] {
         let input = processes.filter { !onlyMine || $0.identity.uid == geteuid() }
-        return ProcessGrouping.groups(input).filter { group in
+        return ProcessGrouping.groups(input, sortByMemory: sortMemory).filter { group in
             search.isEmpty || group.name.localizedCaseInsensitiveContains(search) || group.processes.contains {
                 $0.name.localizedCaseInsensitiveContains(search) || String($0.identity.pid).contains(search)
             }
@@ -144,10 +147,10 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     }
     func savePreferences() { prefs.save(to: .standard); onMenuUpdate?() }
     func expand(_ tab: DetailTab = .processes, memory: Bool = false) {
-        self.tab = tab; sortMemory = memory; expanded = true; onLayout?()
+        guard canNavigate?() != false else { onOpenFull?(); return }
+        self.tab = tab; sortMemory = memory; onOpenFull?()
     }
-    func collapse() { expanded = false; onLayout?() }
-    func togglePin() { pinned.toggle(); onLayout?() }
+    func togglePin() { pinned.toggle(); onPinChange?() }
     func choose(_ process: ProcessSample) { selected = process }
     var selectedIsLive: Bool { selected.map { s in processes.contains { $0.identity == s.identity } } ?? false }
     var mayTerminate: Bool {
@@ -178,7 +181,7 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     func pauseAlerts() { prefs.pauseUntil = Date().addingTimeInterval(3600); savePreferences() }
     func resumeAlerts() { prefs.pauseUntil = nil; savePreferences() }
     func showEvent(_ event: AlertEvent) {
-        focusedEvent = event; expand(.history); onReveal?()
+        focusedEvent = event; expand(.history)
     }
     func requestNotifications() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
@@ -191,6 +194,7 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", hist
     func refreshNotificationStatus() {
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
             Task { @MainActor in
+                self?.notificationsDenied = settings.authorizationStatus == .denied
                 switch settings.authorizationStatus {
                 case .authorized, .provisional: self?.notificationStatus = "Разрешены"
                 case .denied: self?.notificationStatus = "Запрещены в настройках macOS"

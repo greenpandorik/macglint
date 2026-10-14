@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var editing: AlertRule?
     @State private var newRule = false
     @State private var clearConfirm = false
+    @State private var exceptionSearch = ""
+    @State private var showExceptions = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     var body: some View {
         ScrollView {
@@ -22,7 +24,11 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 4) { Text("Системные уведомления"); SmallLabel(text: store.notificationStatus) }
                         Spacer()
                         if store.notificationStatus == "Разрешены" { Toggle("Показывать", isOn: $store.prefs.notifications).toggleStyle(.switch) }
-                        else { Button("Разрешить…") { store.requestNotifications() } }
+                        else if store.notificationsDenied {
+                            Button("Настройки macOS…") {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
+                            }
+                        } else { Button("Разрешить…") { store.requestNotifications() } }
                     }
                     if let until = store.prefs.pauseUntil, until > Date() {
                         HStack { Text("Пауза до " + until.formatted(date: .omitted, time: .shortened)).foregroundStyle(.orange); Spacer(); Button("Возобновить") { store.resumeAlerts() } }
@@ -32,7 +38,7 @@ struct SettingsView: View {
                 section("Личные правила") {
                     ForEach(store.prefs.rules) { rule in
                         HStack {
-                            Toggle("", isOn: Binding(get: { rule.enabled }, set: { enabled in
+                            Toggle(rule.name, isOn: Binding(get: { rule.enabled }, set: { enabled in
                                 if let i = store.prefs.rules.firstIndex(where: { $0.id == rule.id }) { store.prefs.rules[i].enabled = enabled; store.savePreferences() }
                             })).labelsHidden().toggleStyle(.switch).controlSize(.small)
                             VStack(alignment: .leading, spacing: 3) {
@@ -41,19 +47,26 @@ struct SettingsView: View {
                             }
                             Spacer()
                             Button("Изменить") { editing = rule }
-                            Button { store.prefs.rules.removeAll { $0.id == rule.id }; store.savePreferences() } label: { Image(systemName: "trash") }.buttonStyle(.plain).help("Удалить правило")
+                            Button { store.prefs.rules.removeAll { $0.id == rule.id }; store.savePreferences() } label: { Image(systemName: "trash") }.buttonStyle(.plain).help("Удалить правило").accessibilityLabel("Удалить правило «" + rule.name + "»")
                         }.padding(.vertical, 3)
                     }
                     Button { newRule = true } label: { Label("Добавить правило", systemImage: "plus") }
                 }
                 section("Исключения приложений") {
                     SmallLabel(text: "Исключение отключает личные правила для приложения. Общие правила Mac продолжают работать.")
-                    let choices = store.appChoices
-                    ForEach(choices, id: \.key) { app in
-                        Toggle(app.name, isOn: Binding(get: { store.prefs.excludedApps.contains(app.key) }, set: {
-                            if $0 { store.prefs.excludedApps.insert(app.key) } else { store.prefs.excludedApps.remove(app.key) }
-                            store.savePreferences()
-                        })).toggleStyle(.checkbox)
+                    DisclosureGroup("Выбрать приложения · исключено \(store.prefs.excludedApps.count)", isExpanded: $showExceptions) {
+                        TextField("Найти приложение", text: $exceptionSearch).textFieldStyle(.roundedBorder).padding(.top, 8)
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 10) {
+                                ForEach(exceptionChoices, id: \.key) { app in
+                                    Toggle(app.name, isOn: Binding(get: { store.prefs.excludedApps.contains(app.key) }, set: {
+                                        if $0 { store.prefs.excludedApps.insert(app.key) } else { store.prefs.excludedApps.remove(app.key) }
+                                        store.savePreferences()
+                                    })).toggleStyle(.checkbox)
+                                }
+                                if exceptionChoices.isEmpty { Text("Приложения не найдены").foregroundStyle(.secondary) }
+                            }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                        }.frame(height: 180)
                     }
                     if !store.prefs.excludedApps.isEmpty { Button("Сбросить все исключения") { store.prefs.excludedApps = []; store.savePreferences() } }
                 }
@@ -64,7 +77,7 @@ struct SettingsView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }))
                     Button("Очистить историю…") { clearConfirm = true }
-                    SmallLabel(text: "MacGlint 0.1.0 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
+                    SmallLabel(text: "MacGlint 0.2.0 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
                     Link("Проект на GitHub", destination: URL(string: "https://github.com/greenpandorik/macglint")!)
                 }
             }.padding(.horizontal, 24).padding(.bottom, 20)
@@ -79,34 +92,53 @@ struct SettingsView: View {
         .sheet(isPresented: $newRule) { RuleEditor(rule: AlertRule(name: "Моё правило", metric: .cpu, threshold: 80), apps: store.appChoices) { store.prefs.rules.append($0); store.savePreferences() } }
         .confirmationDialog("Удалить историю нагрузки и событий?", isPresented: $clearConfirm) { Button("Очистить", role: .destructive) { store.clearHistory() } }
     }
+    private var exceptionChoices: [(key: String, name: String)] {
+        var choices = Dictionary(uniqueKeysWithValues: store.appChoices.map { ($0.key, $0.name) })
+        for key in store.prefs.excludedApps where choices[key] == nil {
+            choices[key] = URL(fileURLWithPath: key).deletingPathExtension().lastPathComponent + " (не запущено)"
+        }
+        return choices.map { (key: $0.key, name: $0.value) }
+            .filter { exceptionSearch.isEmpty || $0.name.localizedCaseInsensitiveContains(exceptionSearch) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) { Text(title).font(.system(size: 14, weight: .semibold)); content() }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 struct RuleEditor: View {
     @Environment(\.dismiss) private var dismiss
-    @State var rule: AlertRule
+    @State private var draft: RuleDraft
     let apps: [(key: String, name: String)]
     var save: (AlertRule) -> Void
+    init(rule: AlertRule, apps: [(key: String, name: String)], save: @escaping (AlertRule) -> Void) {
+        _draft = State(initialValue: RuleDraft(rule: rule)); self.apps = apps; self.save = save
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Правило уведомления").font(.title2.weight(.semibold))
             VStack(alignment: .leading, spacing: 12) {
-                LabeledContent("Название") { TextField("Название", text: $rule.name).labelsHidden().frame(width: 230) }
-                Picker("Для кого", selection: Binding(get: { rule.appKey ?? "" }, set: { rule.appKey = $0.isEmpty ? nil : $0 })) {
+                LabeledContent("Название") { TextField("Название", text: $draft.rule.name).labelsHidden().frame(width: 230) }
+                Picker("Для кого", selection: Binding(get: { draft.rule.appKey ?? "" }, set: { draft.setAppKey($0.isEmpty ? nil : $0) })) {
                     Text("Весь Mac").tag("")
                     ForEach(apps, id: \.key) { Text($0.name).tag($0.key) }
-                    if let key = rule.appKey, !apps.contains(where: { $0.key == key }) { Text("Сохранённое приложение").tag(key) }
+                    if let key = draft.rule.appKey, !apps.contains(where: { $0.key == key }) { Text("Сохранённое приложение").tag(key) }
                 }
-                Picker("Показатель", selection: $rule.metric) { ForEach(RuleMetric.allCases, id: \.self) { Text($0.title).tag($0) } }
-                LabeledContent("Порог") { TextField("Порог", value: $rule.threshold, format: .number).labelsHidden().frame(width: 150) }
-                LabeledContent("Длительность, с") { TextField("Длительность, с", value: $rule.duration, format: .number).labelsHidden().frame(width: 150) }
-                LabeledContent("Повтор не чаще, с") { TextField("Повтор не чаще, с", value: $rule.cooldown, format: .number).labelsHidden().frame(width: 150) }
-            }.textFieldStyle(.roundedBorder)
-                .frame(maxWidth: .infinity)
-            Text("CPU — 0–100% мощности всего Mac. Давление: 1 — повышенное, 2 — критическое. Память — ГБ. Для диска событие возникает ниже порога. Приложения поддерживают CPU и память. Длительность: до 24 часов, пауза: до 7 дней.")
+                Picker("Показатель", selection: $draft.rule.metric) { ForEach(draft.availableMetrics, id: \.self) { Text($0.title).tag($0) } }
+                LabeledContent(draft.rule.metric == .diskFreeGB ? "Меньше чем" : "Не меньше чем") { TextField("Порог", text: $draft.threshold).labelsHidden().frame(width: 150) }
+                LabeledContent("Длительность, с") { TextField("Длительность, с", text: $draft.duration).labelsHidden().frame(width: 150) }
+                LabeledContent("Повтор не чаще, с") { TextField("Повтор не чаще, с", text: $draft.cooldown).labelsHidden().frame(width: 150) }
+            }.textFieldStyle(.roundedBorder).frame(maxWidth: .infinity)
+            Text("Уведомить, если порог держится указанное время. CPU — доля мощности всего Mac. Давление: 1 — повышенное, 2 — критическое. Память и диск — в ГБ.")
                 .font(.caption).foregroundStyle(.secondary)
-            HStack { Button("Отмена") { dismiss() }; Spacer(); Button("Сохранить") { save(rule); dismiss() }.buttonStyle(.borderedProminent).disabled(!rule.isValid) }
-        }.padding(24).frame(width: 430)
+            if let message = draft.validationMessage {
+                Label(message, systemImage: "exclamationmark.circle").font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Button("Отмена") { dismiss() }.keyboardShortcut(.cancelAction)
+                Spacer()
+                Button("Сохранить") { if let rule = draft.build() { save(rule); dismiss() } }
+                    .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(draft.build() == nil)
+            }
+        }.padding(24).frame(width: 460)
     }
 }

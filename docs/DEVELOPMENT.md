@@ -16,7 +16,7 @@ The scripts create a host-architecture `.app` and DMG in ignored `build/`. They 
 - `MacGlintCore`: metric math, rule engine, bounded JSON history, preferences and grouping.
 - `CMacGlint`: Mach/libproc, 64-bit network interface counters, IOKit battery, disk and process controls.
 - `MacGlintSystem`: serial actor collector, process identity and rate baselines.
-- `MacGlint`: AppKit status item/panel and SwiftUI views, settings and notifications.
+- `MacGlint`: AppKit status item, transient compact panel, independent resizable detail window, and SwiftUI views, settings and notifications.
 
 No external runtime packages or analytics. The app does not send measurements over the network.
 
@@ -42,3 +42,11 @@ Rules are sustained thresholds with recovery hysteresis and repeat cooldown. Per
 - Ad-hoc local build, not Apple notarized. OS notification delivery and login launch depend on system permissions and installation; they still need clean-machine release validation.
 - No formal long-running energy or accessibility certification yet.
 - The app must run to gather history and detect alerts.
+
+## Window behavior (0.2.0)
+
+Left click on the menu bar icon always toggles the compact panel. Opening full details dismisses the compact panel and reveals a persistent resizable window with native close/minimize controls and Processes, History, Settings navigation. Right click provides both entry points plus Settings and Quit. The full window appears in the Dock while open; closing it returns to menu-bar-only operation. Reopening the application reveals the full window, providing an alternative if the menu bar is crowded.
+
+Esc, outside clicks, or focus loss dismiss the compact panel only. The pin applies to the full window. While MacGlint is active, Cmd+0 opens the mini panel, Cmd+1 opens full details, Cmd+, opens Settings, and Cmd+F focuses process search. These are app shortcuts, not global hotkeys.
+
+Rule editing keeps raw numeric text until validation, so invalid text cannot silently save the previous value. Only CPU/memory can be selected for app-specific rules. Saved exclusions remain editable after the app exits. Process child sorting follows the selected column.
