@@ -1,0 +1,24 @@
+name: Feature idea / Идея
+description: Share a real use case for MacGlint / Опишите задачу, которую хочется решить
+title: "[Idea] "
+body:
+  - type: markdown
+    attributes:
+      value: "MacGlint is at the design stage. English and Russian are welcome. / MacGlint пока на этапе дизайна. Можно писать по-русски."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Задача
+      description: What happens today, and what would you like to understand or do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested behavior / Желаемое поведение
+      description: Describe the simplest useful outcome.
+  - type: input
+    id: environment
+    attributes:
+      label: Mac and macOS / Модель Mac и версия macOS
+      description: Optional; include the Safari version if relevant. Do not include serial numbers.

@@ -1,0 +1,22 @@
+name: Design feedback / Отзыв о дизайне
+description: Help improve a mockup or document / Замечание к макету или документации
+title: "[Design] "
+body:
+  - type: input
+    id: reference
+    attributes:
+      label: Mockup or document / Макет или документ
+      description: Link to the relevant file or name the screen and theme.
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What could be clearer? / Что можно улучшить?
+      description: Describe what is confusing and the task you were trying to accomplish.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggestion / Предложение
