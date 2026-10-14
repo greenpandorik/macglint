@@ -16,7 +16,7 @@ A native macOS menu bar system monitor — CPU, memory, processes, history, and 
 
 > **Personal project, built with AI assistance.** I'm building MacGlint primarily for myself: I want a system monitor that feels clear, modern, and comfortable to use every day. AI helps me explore the design, write documentation, and develop the project. I'm sharing the work publicly in case someone else finds it useful.
 
-> **Current stage: working native preview (0.3.0).** The app builds and runs locally. Public Apple-notarized downloads are not available yet. Interface images below are the original AI-generated design concepts with sample data; they are not screenshots of the current app.
+> **Current stage: working native preview (0.3.1).** The app builds and runs locally. Public Apple-notarized downloads are not available yet. Interface images below are the original AI-generated design concepts with sample data; they are not screenshots of the current app.
 
 ## Build and install the preview
 

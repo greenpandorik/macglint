@@ -68,7 +68,8 @@ final class GlintPanel: NSPanel {
         }
 
         store.onOpenFull = { [weak self] in self?.showFull() }
-        store.onOpenMini = { [weak self] in self?.showMini() }
+        store.onOpenMini = { [weak self] in self?.collapseToMini() }
+        store.onCloseFull = { [weak self] in self?.closeFull() }
         store.onCloseMini = { [weak self] in self?.hideMini() }
         store.canNavigate = { [weak self] in self?.full.attachedSheet == nil }
         store.onPinChange = { [weak self] in self?.full.level = self?.store.pinned == true ? .floating : .normal }
@@ -125,9 +126,18 @@ final class GlintPanel: NSPanel {
         } else if mini.isVisible { hideMini() } else { showMini() }
     }
     @objc private func reveal() { showFull() }
-    @objc private func revealMini() { showMini() }
+    @objc private func revealMini() { collapseToMini() }
     @objc private func settings() { store.expand(.settings) }
     @objc private func quit() { NSApp.terminate(nil) }
+    private func closeFull() {
+        guard full.attachedSheet == nil else { showFull(); return }
+        full.performClose(nil)
+    }
+    private func collapseToMini() {
+        guard full.attachedSheet == nil else { showFull(); return }
+        if full.isVisible || full.isMiniaturized { closeFull() }
+        showMini()
+    }
     private func showMini() {
         guard full.attachedSheet == nil else { showFull(); return }
         let screen = statusItem.button?.window?.screen ?? NSScreen.main

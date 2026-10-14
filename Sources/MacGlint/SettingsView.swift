@@ -80,7 +80,7 @@ struct SettingsView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }))
                     Button("Очистить историю…") { clearConfirm = true }
-                    SmallLabel(text: "MacGlint 0.3.0 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
+                    SmallLabel(text: "MacGlint 0.3.1 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
                     Link("Проект на GitHub", destination: URL(string: "https://github.com/greenpandorik/macglint")!)
                 }
             }.padding(.horizontal, 24).padding(.bottom, 20)

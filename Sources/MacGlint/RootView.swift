@@ -107,7 +107,13 @@ struct RootView: View {
                 }
                 Spacer()
                 Text("Мониторинг продолжается\nпосле закрытия окна.").font(.caption).foregroundStyle(.secondary).padding(12)
-                Button { store.onOpenMini?() } label: { Label("Мини-панель", systemImage: "menubar.rectangle") }.padding(12)
+                VStack(alignment: .leading, spacing: 10) {
+                    Button { store.onOpenMini?() } label: { Label("Мини-панель", systemImage: "menubar.rectangle") }
+                        .help("Убрать полное окно и открыть мини-панель · ⌘0")
+                    Button { NSApplication.shared.terminate(nil) } label: { Label("Выйти", systemImage: "power") }
+                        .help("Завершить MacGlint и остановить мониторинг · ⌘Q")
+                        .accessibilityLabel("Завершить MacGlint")
+                }.padding(12)
             }.padding(.horizontal, 10).padding(.bottom, 8).frame(width: 174)
                 .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
             Divider()
@@ -121,6 +127,13 @@ struct RootView: View {
                     Toggle(isOn: Binding(get: { store.pinned }, set: { _ in store.togglePin() })) {
                         Label("Поверх окон", systemImage: "pin")
                     }.toggleStyle(.button).help("Оставлять полное окно поверх других приложений")
+                    Button { store.onCloseFull?() } label: {
+                        Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+                            .frame(width: 28, height: 28).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Закрыть окно — мониторинг продолжится в строке меню · ⌘W")
+                    .accessibilityLabel("Закрыть окно")
                 }.padding(24)
                 if store.tab != .settings {
                     HStack(alignment: .top, spacing: 18) {
