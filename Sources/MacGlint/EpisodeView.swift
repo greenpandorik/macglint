@@ -23,7 +23,7 @@ struct EpisodeView: View {
                 .font(.callout).monospacedDigit().fixedSize(horizontal: false, vertical: true)
             if let episode {
                 HStack {
-                    Text("Активные приложения и процессы").font(.subheadline.weight(.medium))
+                    Text("Приложения в этот момент").font(.subheadline.weight(.medium))
                     Spacer()
                     Picker("Порядок", selection: $memory) { Text("CPU").tag(false); Text("Память").tag(true) }
                         .labelsHidden().pickerStyle(.segmented).frame(width: 150)
@@ -46,13 +46,12 @@ struct EpisodeView: View {
                             .accessibilityLabel("Открыть процесс «" + app.name + "» сейчас")
                     }.padding(.vertical, 4)
                 }
-                SmallLabel(text: "Это измерения в выбранный момент, а не доказательство причины торможения. Переход открывает текущий процесс, если он ещё существует.")
+                SmallLabel(text: "Срез показывает нагрузку, но не устанавливает причину замедления. Ссылки ведут к текущим процессам.")
             } else {
                 Label("Для этого момента нет подробностей приложений. Они записываются начиная с версии 0.3.0 примерно раз в 30 секунд.", systemImage: "info.circle")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+        }.padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 struct AlertCardView: View {
@@ -82,12 +81,12 @@ struct AlertCardView: View {
                 SmallLabel(text: "В момент события: " + process.name + " · PID \(process.identity.pid)" + (store.isLive(process.identity) ? "" : " · уже завершён или перезапущен"))
             }
             if let context = event.context {
+                Divider()
                 EpisodeView(store: store, snapshot: context.snapshot, episode: context)
             } else {
                 SmallLabel(text: "У этого события нет сохранённого среза приложений. Можно выбрать соседний момент на графике.")
             }
-        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.orange.opacity(0.07), in: RoundedRectangle(cornerRadius: 10))
+        }.padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
     }
     @ViewBuilder private var actions: some View {
         if let process = event.process {
@@ -98,7 +97,7 @@ struct AlertCardView: View {
             Button("Возобновить правило") { store.resumeRule(event.ruleID) }
             Text("Пауза до " + until.formatted(date: .omitted, time: .shortened)).font(.caption).foregroundStyle(.secondary)
         } else {
-            Button("Это правило — на паузу 1 час") { store.muteRule(event.ruleID) }.disabled(!hasRule)
+            Button("Пауза на час") { store.muteRule(event.ruleID) }.disabled(!hasRule)
         }
     }
 }

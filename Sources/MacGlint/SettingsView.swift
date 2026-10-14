@@ -4,6 +4,8 @@ import MacGlintCore
 
 struct SettingsView: View {
     @ObservedObject var store: AppStore
+    private enum Pane: String, CaseIterable { case general = "Основные", alerts = "Уведомления", about = "О приложении" }
+    @State private var pane: Pane = .general
     @State private var editing: AlertRule?
     @State private var newRule = false
     @State private var clearConfirm = false
@@ -11,19 +13,51 @@ struct SettingsView: View {
     @State private var showExceptions = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
+            Picker("Раздел настроек", selection: $pane) {
+                ForEach(Pane.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.pickerStyle(.segmented).labelsHidden().fixedSize(horizontal: true, vertical: false)
+            ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                if pane == .general {
                 section("Оформление") {
-                    Picker("Тема", selection: $store.prefs.appearance) {
-                        Text("Как в macOS").tag(Appearance.system); Text("Светлая").tag(Appearance.light); Text("Тёмная").tag(Appearance.dark)
-                    }.pickerStyle(.segmented)
-                    HStack { Text("В строке меню").font(.callout); Spacer(); Toggle("CPU", isOn: $store.prefs.menuCPU); Toggle("Память", isOn: $store.prefs.menuMemory); Toggle("Сеть", isOn: $store.prefs.menuNetwork) }.toggleStyle(.checkbox)
+                    HStack {
+                        Text("Тема").frame(width: 130, alignment: .leading)
+                        Picker("Тема", selection: $store.prefs.appearance) {
+                            Text("Системная").tag(Appearance.system); Text("Светлая").tag(Appearance.light); Text("Тёмная").tag(Appearance.dark)
+                        }.pickerStyle(.segmented).labelsHidden().fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: 0)
+                    }
+                    HStack {
+                        Text("В строке меню").frame(width: 130, alignment: .leading)
+                        Toggle("CPU", isOn: $store.prefs.menuCPU)
+                        Toggle("Память", isOn: $store.prefs.menuMemory)
+                        Toggle("Сеть", isOn: $store.prefs.menuNetwork)
+                        Spacer(minLength: 0)
+                    }.toggleStyle(.checkbox)
                 }
+                section("Запуск и хранение") {
+                    Toggle("Запускать при входе в macOS", isOn: Binding(get: { launchAtLogin }, set: { value in
+                        do { if value { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
+                        catch { store.error = error.localizedDescription }
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                    })).toggleStyle(.checkbox)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("История нагрузки")
+                            SmallLabel(text: "Хранится на этом Mac за последние 24 часа.")
+                        }
+                        Spacer()
+                        Button("Очистить…") { clearConfirm = true }
+                    }
+                }
+                }
+                if pane == .alerts {
                 section("Уведомления") {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) { Text("Системные уведомления"); SmallLabel(text: store.notificationStatus) }
+                        VStack(alignment: .leading, spacing: 4) { Text("Системные уведомления"); if store.notificationStatus != "Разрешены" { SmallLabel(text: store.notificationStatus) } }
                         Spacer()
-                        if store.notificationStatus == "Разрешены" { Toggle("Показывать", isOn: $store.prefs.notifications).toggleStyle(.switch) }
+                        if store.notificationStatus == "Разрешены" { Toggle("Системные уведомления", isOn: $store.prefs.notifications).labelsHidden().toggleStyle(.switch).controlSize(.small) }
                         else if store.notificationsDenied {
                             Button("Настройки macOS…") {
                                 if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
@@ -33,31 +67,35 @@ struct SettingsView: View {
                     if let until = store.prefs.pauseUntil, until > Date() {
                         HStack { Text("Пауза до " + until.formatted(date: .omitted, time: .shortened)).foregroundStyle(.orange); Spacer(); Button("Возобновить") { store.resumeAlerts() } }
                     } else { Button("Не беспокоить 1 час") { store.pauseAlerts() } }
-                    SmallLabel(text: "События записываются локально даже без разрешения на системные уведомления. Во время паузы правила не срабатывают.")
+                    SmallLabel(text: "Без уведомлений события сохраняются в истории. Пауза временно отключает правила.")
                 }
-                section("Личные правила") {
+                section("Правила") {
+                    VStack(spacing: 0) {
                     ForEach(store.prefs.rules) { rule in
                         HStack {
                             Toggle(rule.name, isOn: Binding(get: { rule.enabled }, set: { enabled in
                                 if let i = store.prefs.rules.firstIndex(where: { $0.id == rule.id }) { store.prefs.rules[i].enabled = enabled; store.savePreferences() }
                             })).labelsHidden().toggleStyle(.switch).controlSize(.small)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text(rule.name).fontWeight(.medium)
+                                Text(rule.name)
                                 SmallLabel(text: "\(rule.metric.title) \(rule.metric == .diskFreeGB ? "<" : "≥") \(rule.threshold.formatted()) · \(Int(rule.duration)) с · " + (rule.appKey == nil ? "весь Mac" : "приложение"))
                             }
                             Spacer()
                             if let until = store.ruleMutedUntil(rule.id) {
                                 Button("Пауза до " + until.formatted(date: .omitted, time: .shortened) + " · возобновить") { store.resumeRule(rule.id) }.font(.caption)
                             }
-                            Button("Изменить") { editing = rule }
+                            Button { editing = rule } label: { Image(systemName: "slider.horizontal.3") }
+                                .buttonStyle(.borderless).help("Изменить правило").accessibilityLabel("Изменить правило «" + rule.name + "»")
                             Button { store.prefs.rules.removeAll { $0.id == rule.id }; store.savePreferences() } label: { Image(systemName: "trash") }.buttonStyle(.plain).help("Удалить правило").accessibilityLabel("Удалить правило «" + rule.name + "»")
-                        }.padding(.vertical, 3)
+                        }.padding(.vertical, 10)
+                        Divider()
+                    }
                     }
                     Button { newRule = true } label: { Label("Добавить правило", systemImage: "plus") }
                 }
-                section("Исключения приложений") {
-                    SmallLabel(text: "Исключение отключает личные правила для приложения. Общие правила Mac продолжают работать.")
-                    DisclosureGroup("Выбрать приложения · исключено \(store.prefs.excludedApps.count)", isExpanded: $showExceptions) {
+                section("Исключения") {
+                    SmallLabel(text: "Не применять правила к выбранным приложениям. Правила для всего Mac остаются включены.")
+                    DisclosureGroup("Приложения · \(store.prefs.excludedApps.count)", isExpanded: $showExceptions) {
                         TextField("Найти приложение", text: $exceptionSearch).textFieldStyle(.roundedBorder).padding(.top, 8)
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: 10) {
@@ -73,18 +111,27 @@ struct SettingsView: View {
                     }
                     if !store.prefs.excludedApps.isEmpty { Button("Сбросить все исключения") { store.prefs.excludedApps = []; store.savePreferences() } }
                 }
-                section("Приложение и данные") {
-                    Toggle("Запускать при входе в macOS", isOn: Binding(get: { launchAtLogin }, set: { value in
-                        do { if value { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
-                        catch { store.error = error.localizedDescription }
-                        launchAtLogin = SMAppService.mainApp.status == .enabled
-                    }))
-                    Button("Очистить историю…") { clearConfirm = true }
-                    SmallLabel(text: "MacGlint 0.3.1 · локальная предварительная сборка\nСоздано для себя с помощью ИИ. История и настройки хранятся на Mac.\nИнтеграция с вкладками Safari и автоматическое обновление пока не реализованы.")
-                    Link("Проект на GitHub", destination: URL(string: "https://github.com/greenpandorik/macglint")!)
                 }
-            }.padding(.horizontal, 24).padding(.bottom, 20)
-        }
+                if pane == .about {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 12) {
+                            Image(nsImage: NSApplication.shared.applicationIconImage).resizable().frame(width: 48, height: 48)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("MacGlint").font(.title3.weight(.semibold))
+                                Text("Версия 0.4.0 · предварительная сборка").font(.callout).foregroundStyle(.secondary)
+                            }
+                        }
+                        Text("Сделано для себя с помощью ИИ. Открытый проект для тех, кому нужен простой монитор Mac.")
+                            .font(.callout).fixedSize(horizontal: false, vertical: true)
+                        Link("Проект на GitHub ↗", destination: URL(string: "https://github.com/greenpandorik/macglint")!)
+                        Divider()
+                        Text("История и настройки остаются на вашем Mac.").font(.callout)
+                        SmallLabel(text: "Сопоставление вкладок Safari и автоматическое обновление пока недоступны.")
+                    }
+                }
+            }.frame(maxWidth: 560, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 20)
+            }
+        }.padding(.horizontal, 24)
         .onAppear { openRequestedRule() }
         .onChange(of: store.requestedRuleID) { _, _ in openRequestedRule() }
         .onChange(of: store.prefs.menuCPU) { _, _ in store.savePreferences() }
@@ -99,6 +146,7 @@ struct SettingsView: View {
     }
     private func openRequestedRule() {
         guard let id = store.requestedRuleID else { return }
+        pane = .alerts
         editing = store.prefs.rules.first { $0.id == id }
         store.requestedRuleID = nil
     }
@@ -112,7 +160,7 @@ struct SettingsView: View {
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) { Text(title).font(.system(size: 14, weight: .semibold)); content() }.frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 14) { Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary); content() }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 struct RuleEditor: View {

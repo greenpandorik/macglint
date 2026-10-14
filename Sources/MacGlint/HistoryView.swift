@@ -83,7 +83,7 @@ struct HistoryView: View {
                 }
                 Divider()
                 HStack { Text("События").font(.headline); Spacer(); Text("\(store.events.count) за 24 часа").font(.caption).foregroundStyle(.secondary) }
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     if store.events.isEmpty { Text("Пока всё спокойно. Здесь появятся сработавшие правила.").font(.callout).foregroundStyle(.secondary).padding(.vertical, 16) }
                     ForEach(store.events.reversed()) { event in
                         Button { store.showEvent(event) } label: {
@@ -92,8 +92,9 @@ struct HistoryView: View {
                                 VStack(alignment: .leading, spacing: 3) { Text(event.title).fontWeight(.medium); Text(event.detail).font(.caption).foregroundStyle(.secondary) }
                                 Spacer(); Text(event.date.formatted(date: .omitted, time: .shortened)).font(.caption).foregroundStyle(.secondary)
                                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
-                            }.padding(12).background(store.focusedEvent?.id == event.id ? Color.orange.opacity(0.1) : Color.secondary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8))
+                            }.padding(12).background(store.focusedEvent?.id == event.id ? Color.primary.opacity(0.06) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
                         }.buttonStyle(.plain).accessibilityAddTraits(store.focusedEvent?.id == event.id ? .isSelected : [])
+                        Divider()
                     }
                 }
                 SmallLabel(text: "История за 24 часа · система ≈ 10 с, приложения ≈ 30 с · пропуски не означают нулевую нагрузку")
@@ -111,7 +112,7 @@ struct HistoryView: View {
     }
     @ViewBuilder private var historyChart: some View {
         if samples.isEmpty {
-            ContentUnavailableView("История ещё собирается", systemImage: "chart.xyaxis.line", description: Text("Новые точки сохраняются примерно каждые 10 секунд. Данные хранятся на этом Mac до 24 часов.")).frame(height: 170)
+            QuietEmptyState(title: "История ещё собирается", message: "Новые точки появляются примерно каждые 10 секунд. История хранится на Mac за последние сутки.").frame(height: 170)
         } else {
             Chart {
                 ForEach(plotPoints) { s in
@@ -124,7 +125,8 @@ struct HistoryView: View {
                 if let focus = navigation.selectedDate ?? store.focusedEvent?.date {
                     RuleMark(x: .value("Выбранный момент", focus)).foregroundStyle(.primary.opacity(0.6))
                 }
-            }.chartYAxis { AxisMarks(position: .leading) }
+            }.chartXScale(range: .plotDimension(padding: 16))
+                .chartYAxis { AxisMarks(position: .leading) }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisGridLine(); AxisValueLabel(format: .dateTime.hour().minute()) } }
                 .frame(height: 170)
                 .chartOverlay { proxy in

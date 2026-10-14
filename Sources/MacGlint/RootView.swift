@@ -96,46 +96,39 @@ struct RootView: View {
     private var fullContent: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                Label("MacGlint", systemImage: "waveform.path").font(.system(size: 19, weight: .semibold)).padding(.vertical, 18).padding(.horizontal, 12)
+                Label("MacGlint", systemImage: "waveform.path").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary).padding(.vertical, 16).padding(.horizontal, 12)
                 ForEach(DetailTab.allCases, id: \.self) { tab in
                     Button { store.tab = tab } label: {
                         Label(tab.rawValue, systemImage: icon(tab))
                             .font(.system(size: 13, weight: store.tab == tab ? .semibold : .regular))
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 10)
-                            .background(store.tab == tab ? Color.accentColor.opacity(0.15) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(store.tab == tab ? Color.primary.opacity(0.08) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain).accessibilityAddTraits(store.tab == tab ? .isSelected : [])
                 }
                 Spacer()
-                Text("Мониторинг продолжается\nпосле закрытия окна.").font(.caption).foregroundStyle(.secondary).padding(12)
+                Divider().padding(.horizontal, 12)
                 VStack(alignment: .leading, spacing: 10) {
                     Button { store.onOpenMini?() } label: { Label("Мини-панель", systemImage: "menubar.rectangle") }
                         .help("Убрать полное окно и открыть мини-панель · ⌘0")
                     Button { NSApplication.shared.terminate(nil) } label: { Label("Выйти", systemImage: "power") }
                         .help("Завершить MacGlint и остановить мониторинг · ⌘Q")
                         .accessibilityLabel("Завершить MacGlint")
-                }.padding(12)
+                }.buttonStyle(.plain).font(.callout).foregroundStyle(.secondary).padding(12)
             }.padding(.horizontal, 10).padding(.bottom, 8).frame(width: 174)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
+                .background(Color(nsColor: .controlBackgroundColor))
             Divider()
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(store.tab.rawValue).font(.system(size: 24, weight: .semibold))
-                        Label(store.stateText, systemImage: "circle.fill").font(.caption).foregroundStyle(store.stateColor)
+                        Text(store.tab.rawValue).font(.system(size: 20, weight: .semibold))
                     }
                     Spacer()
                     Toggle(isOn: Binding(get: { store.pinned }, set: { _ in store.togglePin() })) {
-                        Label("Поверх окон", systemImage: "pin")
-                    }.toggleStyle(.button).help("Оставлять полное окно поверх других приложений")
-                    Button { store.onCloseFull?() } label: {
-                        Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
-                            .frame(width: 28, height: 28).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.bordered)
-                    .help("Закрыть окно — мониторинг продолжится в строке меню · ⌘W")
-                    .accessibilityLabel("Закрыть окно")
-                }.padding(24)
-                if store.tab != .settings {
+                        Image(systemName: store.pinned ? "pin.fill" : "pin")
+                    }.toggleStyle(.button).controlSize(.small)
+                        .help("Поверх других окон").accessibilityLabel("Поверх окон")
+                }.padding(.horizontal, 24).padding(.vertical, 18)
+                if store.tab == .processes {
                     HStack(alignment: .top, spacing: 18) {
                         MetricTile(icon: "cpu", title: "Процессор", value: Format.percent(store.snapshot.cpu), subtitle: "Весь Mac")
                         MetricTile(icon: "memorychip", title: "Память", value: Format.bytes(store.snapshot.memoryUsed), subtitle: "из " + Format.bytes(store.snapshot.memoryTotal))
@@ -161,9 +154,10 @@ struct RootView: View {
                 Divider()
                 HStack {
                     Circle().fill(store.stateColor).frame(width: 5, height: 5)
-                    Text(store.processes.isEmpty ? "Подключаемся к macOS…" : "Обновлено " + store.snapshot.date.formatted(date: .omitted, time: .standard))
+                    Text(store.stateText)
                     Spacer()
-                    Text("Данные остаются на Mac")
+                    Text(store.processes.isEmpty ? "Подключение…" : store.snapshot.date.formatted(date: .omitted, time: .standard))
+                        .monospacedDigit().help("Последнее измерение. Все данные хранятся на этом Mac.")
                 }.font(.caption).foregroundStyle(.secondary).padding(.horizontal, 24).padding(.vertical, 10)
             }
         }

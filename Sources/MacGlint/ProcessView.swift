@@ -35,7 +35,7 @@ struct ProcessView: View {
                         }.foregroundStyle(.secondary).padding(30)
                     }
                 }
-            }.background(.quaternary.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+            }
             if let selected = store.selected { inspector(selected).padding(.top, 12) }
             HStack {
                 Text("CPU — доля мощности всего Mac")
@@ -67,7 +67,7 @@ struct ProcessView: View {
                     Text(Format.bytes(group.memoryBytes)).monospacedDigit().frame(width: 90, alignment: .trailing)
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
-        }.padding(.horizontal, 10).padding(.vertical, 8)
+        }.padding(.horizontal, 10).padding(.vertical, 6)
     }
     private func processRow(_ process: ProcessSample) -> some View {
         Button { store.choose(process) } label: {

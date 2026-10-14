@@ -36,10 +36,10 @@ struct MetricTile: View {
     let icon: String; let title: String; let value: String; var subtitle = ""; var color: Color = .blue
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Label(title, systemImage: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 23, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            Label(title, systemImage: icon).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+            Text(value).font(.system(size: 20, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             if !subtitle.isEmpty { Text(subtitle).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1) }
-        }.frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
     }
 }
 struct AppIcon: View {
@@ -61,4 +61,16 @@ struct AppIcon: View {
 struct SmallLabel: View {
     let text: String
     var body: some View { Text(text).font(.system(size: 11)).foregroundStyle(.secondary) }
+}
+
+struct QuietEmptyState: View {
+    let title: String
+    let message: String
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title).font(.headline)
+            Text(message).font(.callout).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).frame(maxWidth: 360)
+        }.padding(.vertical, 32).frame(maxWidth: .infinity)
+    }
 }

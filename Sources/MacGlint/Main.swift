@@ -69,7 +69,6 @@ final class GlintPanel: NSPanel {
 
         store.onOpenFull = { [weak self] in self?.showFull() }
         store.onOpenMini = { [weak self] in self?.collapseToMini() }
-        store.onCloseFull = { [weak self] in self?.closeFull() }
         store.onCloseMini = { [weak self] in self?.hideMini() }
         store.canNavigate = { [weak self] in self?.full.attachedSheet == nil }
         store.onPinChange = { [weak self] in self?.full.level = self?.store.pinned == true ? .floating : .normal }

@@ -9,44 +9,45 @@ struct MemoryGrowthView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Что изменилось за последние 10 минут").font(.headline)
-            Text("Сравниваем память приложений и групп процессов текущего пользователя. Рост сам по себе не означает утечку памяти.")
+            Text("Изменение за последние 10 минут. Рост не обязательно означает утечку.")
                 .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             TextField("Найти приложение или группу", text: $search).textFieldStyle(.roundedBorder)
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     if growth.isEmpty {
-                        ContentUnavailableView(search.isEmpty ? (!store.growthHasComparison ? "Собираем сравнение" : "Рост пока не обнаружен") : "Ничего не найдено",
-                            systemImage: "chart.line.uptrend.xyaxis",
-                            description: Text("Для сравнения нужна минимум минута непрерывных измерений. После сна, перезапуска или пропуска данных отсчёт начинается заново."))
+                        QuietEmptyState(
+                            title: search.isEmpty ? (!store.growthHasComparison ? "Собираем данные" : "Заметного роста нет") : "Ничего не найдено",
+                            message: search.isEmpty ? "Сравнение доступно после минуты непрерывных измерений. После сна или перезапуска отсчёт начинается заново." : "Попробуйте другое название приложения.")
                     }
                     ForEach(growth) { item in
-                        VStack(alignment: .leading, spacing: 9) {
-                            HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 12) {
                                 AppIcon(key: item.id)
-                                Text(item.name).font(.headline).lineLimit(1)
-                                Spacer()
-                                Text("+" + Format.bytes(item.increase)).font(.title3.weight(.semibold)).monospacedDigit().foregroundStyle(.orange)
-                            }
-                            HStack {
-                                Text((Double(item.before) / 1e6).formatted(.number.precision(.fractionLength(0))) + " МБ → " + (Double(item.after) / 1e6).formatted(.number.precision(.fractionLength(0))) + " МБ").monospacedDigit()
-                                Spacer()
-                                Text("за " + String(format: "%.1f", item.elapsed / 60) + " мин").foregroundStyle(.secondary)
-                            }.font(.callout)
-                            HStack {
-                                Text(item.since.formatted(date: .omitted, time: .standard) + " — " + item.until.formatted(date: .omitted, time: .standard)).font(.caption).foregroundStyle(.secondary)
-                                Spacer()
-                                Button("Показать процесс") { store.openHistoricalProcess(item.process) }.disabled(!store.isLive(item.process))
-                            }
-                            if item.compositionChanged {
-                                Label("Состав процессов менялся — часть роста может быть связана с новыми процессами.", systemImage: "info.circle")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }.padding(14).background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text(item.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                                    Text((Double(item.before) / 1e6).formatted(.number.precision(.fractionLength(0))) + " МБ → " + (Double(item.after) / 1e6).formatted(.number.precision(.fractionLength(0))) + " МБ")
+                                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                                    if item.compositionChanged {
+                                        Text("Состав процессов менялся").font(.caption).foregroundStyle(.secondary)
+                                            .help("Часть роста может быть связана с появлением новых процессов.")
+                                    }
+                                }
+                                Spacer(minLength: 8)
+                                VStack(alignment: .trailing, spacing: 5) {
+                                    Text("+" + Format.bytes(item.increase)).font(.system(size: 14, weight: .medium)).monospacedDigit()
+                                    Text("за " + String(format: "%.1f", item.elapsed / 60) + " мин").font(.caption).foregroundStyle(.secondary)
+                                }
+                                .help(item.since.formatted(date: .omitted, time: .standard) + " — " + item.until.formatted(date: .omitted, time: .standard))
+                                Button { store.openHistoricalProcess(item.process) } label: { Image(systemName: "arrow.up.right.square") }
+                                    .buttonStyle(.borderless).disabled(!store.isLive(item.process))
+                                    .help("Открыть текущий процесс").accessibilityLabel("Показать процесс «" + item.name + "»")
+                            }.padding(.vertical, 12).padding(.horizontal, 4)
+                            Divider()
+                        }
                     }
                 }
             }
-            SmallLabel(text: "Изменения от 1 МБ · обновляется с измерениями · сравнение только в текущем сеансе")
+            SmallLabel(text: "От 1 МБ · только текущий сеанс")
         }.padding(.horizontal, 24).padding(.bottom, 14)
     }
 }

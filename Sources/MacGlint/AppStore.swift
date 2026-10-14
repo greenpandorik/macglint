@@ -35,7 +35,6 @@ enum DetailTab: String, CaseIterable { case processes = "Процессы", grow
     var onPinChange: (() -> Void)?
     var onOpenFull: (() -> Void)?
     var onOpenMini: (() -> Void)?
-    var onCloseFull: (() -> Void)?
     var onCloseMini: (() -> Void)?
     var canNavigate: (() -> Bool)?
     var onMenuUpdate: (() -> Void)?
